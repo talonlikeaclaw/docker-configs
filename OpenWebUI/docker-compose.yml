@@ -1,0 +1,47 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config/searxng/settings.yml:/etc/searxng/settings.yml:ro
+    networks:
+      - webnet
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./volumes/ollama:/root/.ollama
+    networks:
+      - webnet
+
+  openwebui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openwebui
+    restart: always
+    ports:
+      - "3000:8080"
+    environment:
+      - ENABLE_RAG_WEB_SEARCH=True
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - RAG_WEB_SEARCH_RESULT_COUNT=5
+      - RAG_WEB_SEARCH_CONCURRENT_REQUESTS=8
+      - SEARXNG_QUERY_URL=http://searxng:8080/search?q=<query>
+      - OLLAMA_BASE_URL=http://ollama:11434
+    volumes:
+      - ./volumes/openwebui:/app/backend/data
+    networks:
+      - webnet
+    depends_on:
+      - searxng
+      - ollama
+
+networks:
+  webnet:
+    driver: bridge
